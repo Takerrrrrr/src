@@ -36,6 +36,8 @@ typedef enum
 
     CMD_MODE_SWITCH = 0x0071,
 
+    CMD_WAM_PID_EC = 0x0081,        // 129 接收上位机传来的数据到 能量控制环路控制结构体g1_smPidEcConfig 中;
+    CMD_WAM_PID_QC = 0x0082,        // 130 同上 保存到g1_smPidQcConfig
     // CMD_MS_OPENLOOP_ACT = 0x0060,
     // CMD_MS_PLL = 0x0061,
     // CMD_MS_PID_AI = 0x0062,
@@ -58,6 +60,8 @@ typedef enum
     MFIELDS_TYPE_RESONANT_EST = 0x10,
     MFIELDS_TYPE_PHASE_FINDER = 0x11,
     MFIELDS_TYPE_MODE_SWITCH = 0x12,
+    MFIELDS_TYPE_PID_EC = 0x13,             // 19 上位机 全角模式 接收数据
+    MFIELDS_TYPE_PID_QC = 0x14,             // 20 显示正交控制数据（最上侧按钮）
 } subTelemetryType_e;
 
 #endif /* SRC_COMMUNICATE_H_ */

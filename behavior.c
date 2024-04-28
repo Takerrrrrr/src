@@ -431,6 +431,25 @@ u32 read_demod_amp(u8 Gyro_ID, u8 channel)
     return temp;
 }
 
+void write_SR(u8 Gyro_ID,s32 r_value, s32 s_value)
+{
+    if (((GYRO_MASK == USE_GYRO_SLOT_BOTH) || (GYRO_MASK == USE_GYRO_SLOT_1))&&(Gyro_ID == 1))
+    {
+        write_whole_angle_parameter(CHR, r_value);
+        write_whole_angle_parameter(CHS, s_value);
+    }
+}
+
+#define angle_factor (double)(1<<29)        // scaling factor
+s32 read_angle_scale(u8 Gyro_ID)
+{
+    s32 angle_raw = 0;
+    angle_raw = read_standing_wave_angle();
+    return angle_raw;                       // (-1,1) 32位 补码 定点数
+    // float angle_scale = angle_raw/angle_factor;             // binary -> double
+    // return angle_scale;
+}
+
 s32 read_demod_phase(u8 Gyro_ID, u8 channel)
 {
     // Description: 陀螺ID号和通道号下解调后的相位

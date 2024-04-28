@@ -228,7 +228,7 @@ void abstractLoop(loopConfig_t *localCfg)
     if (localCfg->loopSource != LOOP_SOURCE_NONE &&
         (localCfg->PID_P != 0 || localCfg->PID_I != 0 || localCfg->PID_D != 0))
     {
-        // read PID value
+
         float fP = (localCfg->PID_P) / 100000.0;
         float fI = (localCfg->PID_I) / 100000.0;
         float fD = (localCfg->PID_D) / 100000.0;
@@ -252,7 +252,6 @@ void abstractLoop(loopConfig_t *localCfg)
             default:
                 break;
             }
-            // calcu the error
             localCfg->currentError = localCfg->loop_setvalue - localCfg->currentReading;
         }
         else if (localCfg->loopSource == LOOP_SOURCE_COMPONENT)
@@ -276,8 +275,20 @@ void abstractLoop(loopConfig_t *localCfg)
             }
             localCfg->currentError = localCfg->currentReading - localCfg->loop_setvalue;
         }
+        // 上位机 红绿蓝按钮 进行状态选择
+        // 绿色 是 5：LOOP_SOURCE_WAM_EC_1
+        // 蓝色 是 6：LOOP_SOURCE_WAM_EC_2
+        else if (localCfg->loopSource == LOOP_SOURCE_WAM_EC_1 || localCfg->loopSource == LOOP_SOURCE_WAM_EC_2)
+        {   
+            localCfg->currentReading = getGyroData(localCfg->gyroid,RUNTIME_FIELD_WAM_E);   // read E；
+            localCfg->currentError = localCfg->currentReading - localCfg->loop_setvalue;
+        }
+        else if(localCfg->loopSource == LOOP_SOURCE_WAM_QC)
+        {
+            localCfg->currentReading = getGyroData(localCfg->gyroid,RUNTIME_FIELD_WAM_Q);   // read Q；
+            localCfg->currentError = localCfg->currentReading - localCfg->loop_setvalue;    // loop_setvalue should be zero
+        }
 
-        // PID calculation
         s32 out = localCfg->loopOutput +
                   (fP * (localCfg->currentError - localCfg->previousError) + fI * localCfg->currentError + fD * (localCfg->currentError - 2 * localCfg->previousError + localCfg->lastError)) / 1000;
 
@@ -332,6 +343,18 @@ void abstractLoop(loopConfig_t *localCfg)
             setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHB_Q, localCfg->loopOutput);
             break;
         }
+        case LOOP_PID_WAM_ENERGY:
+        {
+            setGyroData(localCfg->gyroid, RUNTIME_FIELD_PID_EC_CURRENT_ERROR, localCfg->currentError);
+            setGyroData(localCfg->gyroid, RUNTIME_FIELD_PID_EC_CURRENT_OUTPUT, localCfg->loopOutput);
+            break;
+        }
+        case LOOP_PID_WAM_QUADRATURE:
+        {
+            setGyroData(localCfg->gyroid, RUNTIME_FIELD_PID_QC_CURRENT_ERROR, localCfg->currentError);
+            setGyroData(localCfg->gyroid, RUNTIME_FIELD_PID_QC_CURRENT_OUTPUT, localCfg->loopOutput);
+            break;
+        }
         default:
             break;
         }
@@ -349,18 +372,16 @@ void phaseLockLoop(loopConfig_t *localCfg)
 
         // read and calc errors
         // localCfg->currentReading = read_demod_phase(Gyro_ID, localCfg->loopSource);
-        if (localCfg->loopSource == LOOP_SOURCE_PHASE_A)            //  锁A模态的相位
+        if (localCfg->loopSource == LOOP_SOURCE_PHASE_A)
         {
-            localCfg->currentReading = getGyroData(localCfg->gyroid, RUNTIME_FIELD_PHASE_A);    // 拿到运行时A模态的相位
+            localCfg->currentReading = getGyroData(localCfg->gyroid, RUNTIME_FIELD_PHASE_A);
         }
         else if (localCfg->loopSource == LOOP_SOURCE_PHASE_B)
         {
             localCfg->currentReading = getGyroData(localCfg->gyroid, RUNTIME_FIELD_PHASE_B);
         }
-        // PID误差项 e = 运行时的相位 - 上位机设定值
         localCfg->currentError = localCfg->currentReading - localCfg->loop_setvalue;
 
-        // PID输出 u
         u32 out = localCfg->loopOutput +
                   (fP * (localCfg->currentError - localCfg->previousError) +
                    fI * localCfg->currentError +
@@ -390,7 +411,6 @@ void phaseLockLoop(loopConfig_t *localCfg)
         // apply the new frequency word
         setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_FREQUENCY, localCfg->loopOutput);
 
-        // modify runtime data in runtime data structure
         setGyroData(localCfg->gyroid, RUNTIME_FIELD_CURRENT_FREQUENCY, localCfg->loopOutput);
         setGyroData(localCfg->gyroid, RUNTIME_FIELD_PLL_CURRENT_ERROR, localCfg->currentError);
         setGyroData(localCfg->gyroid, RUNTIME_FIELD_PLL_CURRENT_PHASE, localCfg->currentReading);
@@ -958,4 +978,87 @@ void modeSwitching(modeSwitchingConfig_t *localCfg)
     }
 }
 
-//void parameterCalculation()
+// Gyro operation for WHOLE ANGLE MODE
+
+// calculate E value
+// PLL开启后，计算并向上位机传输
+void wamEQcalculation(u8 gyroid){
+    float ai = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHA_I) / FACTOR;
+    float aq = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHA_Q) / FACTOR;
+    float bi = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHB_I) / FACTOR;
+    float bq = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHB_Q) / FACTOR;
+    s32 E = (s32)(ai*ai + aq*aq + bi*bi + bq*bq);
+    s32 Q = (s32)(2*( ai*bq - aq*bi ));
+    setGyroData(gyroid,RUNTIME_FIELD_WAM_E,E);
+    setGyroData(gyroid,RUNTIME_FIELD_WAM_Q,Q);
+}
+
+// description: calcu SRE and write into gpio
+void wamSRoperation(u8 gyroid){
+    float ai = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHA_I) / FACTOR;
+    float aq = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHA_Q) / FACTOR;
+    float bi = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHB_I) / FACTOR;
+    float bq = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHB_Q) / FACTOR;
+
+    s32 S = (s32)(2 * (ai*bi + aq*bq)*100);                     // *100：保留精度
+    s32 R = (s32)((ai*ai + aq*aq - bi*bi - bq*bq)*100);
+    write_SR(gyroid,R,S);
+
+}
+
+void wamDriveOperation(loopConfig_t* localCfg){
+    // s32 angle_raw = read_angle_scale(localCfg->gyroid);
+    // double angle_temp = angle_raw / ANGLE_FACTOR;                // angle_temp ∈ (-1,1)
+    // s32 angle = (s32)(angle_temp* 90.0 * 1000.0);                // 未标定，向上位机发送显示 （-90°，90°）； 上位机需要除以1000
+    // setGyroData(localCfg->gyroid,RUNTIME_FIELD_WAM_ANGLE,angle);
+    double angle_temp=getGyroData(localCfg->gyroid,RUNTIME_FIELD_WAM_ANGLE)/1000.0/90;
+    double angle_radians = angle_temp * PI / 2;                  // angle_radians = Θ
+    double angle_sin = sin(angle_radians);
+    double angle_cos = cos(angle_radians);
+
+    u32 pidECCurrentOutput = getGyroData(localCfg->gyroid,RUNTIME_FIELD_PID_EC_CURRENT_OUTPUT);
+    u32 pidQCCurrentOutput = getGyroData(localCfg->gyroid,RUNTIME_FIELD_PID_QC_CURRENT_OUTPUT);
+    if( localCfg->loopSource == LOOP_SOURCE_WAM_EC_1)
+    {
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHA_I, (short)pidECCurrentOutput*angle_sin);   // drive voltage
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHB_I, (short)pidECCurrentOutput*angle_cos);
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHA_Q, (short)pidQCCurrentOutput*angle_cos);
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHB_Q, (short)pidQCCurrentOutput*angle_sin*(-1));
+    }
+    else if( localCfg->loopSource == LOOP_SOURCE_WAM_EC_2)
+    {
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHA_I, (short)pidECCurrentOutput*angle_cos);   // drive voltage
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHB_I, (short)pidECCurrentOutput*angle_sin);
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHA_Q, (short)pidQCCurrentOutput*angle_sin*(-1));
+        setGyroOutput(localCfg->gyroid, OUTPUT_FIELD_DRIVE_CHB_Q, (short)pidQCCurrentOutput*angle_cos);
+    }
+
+}
+
+void wamAngleCalucation(u8 gyroid)
+{
+    s32 angle_raw = read_angle_scale(gyroid);
+    double angle_temp = angle_raw / ANGLE_FACTOR;                // angle_temp ∈ (-1,1)
+    s32 angle = (s32)(angle_temp* 90.0 * 1000.0);                // 未标定，向上位机发送显示 （-90°，90°）； 上位机需要除以1000
+    setGyroData(gyroid,RUNTIME_FIELD_WAM_ANGLE,angle);
+}
+
+void wamPhaseCompensation(u8 gyroid)
+{
+    float ai = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHA_I) / FACTOR;
+    float aq = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHA_Q) / FACTOR;
+    float bi = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHB_I) / FACTOR;
+    float bq = (int)getGyroData(gyroid,RUNTIME_FIELD_AMP_CHB_Q) / FACTOR;
+    float L = (s32)(2*(ai*aq + bi*bq));
+    float E = (s32)(ai*ai + aq*aq + bi*bi + bq*bq);
+    float Q = (s32)(2*( ai*bq - aq*bi ));
+    double temp = (double)(L/(sqrt(E + Q)*sqrt(E - Q)));
+    if( abs(temp) < 1)
+    {
+        // 返回弧度表示的反正切
+        // 将解算出来的相位加入 解调参考相位中
+        double deltaPhase = -asin(temp);
+        setGyroOutput(gyroid,OUTPUT_FIELD_DEMOD_PHASE_A,deltaPhase);
+        setGyroOutput(gyroid,OUTPUT_FIELD_DEMOD_PHASE_B,deltaPhase);
+    }
+}

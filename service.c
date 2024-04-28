@@ -6,7 +6,6 @@
 
 //// System services
 static u8 comm_count = 0;
-//   仅有GYRO1时，每2 tick 进行一次 通信数据的构建，发送，接收与解码
 void serviceCommunication(void)
 {
     dataPayload_t tmpData;
@@ -67,7 +66,7 @@ void serviceGyro1(void)
 
     // --- core service ---
     // check lock on frequency word:
-    if (g1_openloopConfig.frequency_enable != 0)    // 怎么保证互斥？ ； 某条件下的代码块执行完成之后，将不再测试其他条件
+    if (g1_openloopConfig.frequency_enable != 0)
     {
         openLoop(&g1_openloopConfig, OP_FRE);
     }
@@ -86,7 +85,17 @@ void serviceGyro1(void)
     abstractLoop(&g1_smPidAqConfig);
     abstractLoop(&g1_smPidBiConfig);
     abstractLoop(&g1_smPidBqConfig);
-
+    // whole angle mode 
+    wamEQcalculation(GYRO1);
+    wamSRoperation(GYRO1);
+    wamAngleCalucation(GYRO1);
+    if( g1_smPidEcConfig.loopSource != 0 || g1_smPidQcConfig.loopSource != 0){        
+        abstractLoop(&g1_smPidEcConfig);
+        abstractLoop(&g1_smPidQcConfig);
+        wamDriveOperation(&g1_smPidEcConfig);
+        wamPhaseCompensation(GYRO1);
+    }
+    
     // check hv lock
     if (g1_openloopConfig.hv_enable != 0)
     {
@@ -174,6 +183,8 @@ void serviceInitX(u8 gyroID)
         initPidConfig(gyroID, &g1_smPidAqConfig);
         initPidConfig(gyroID, &g1_smPidBiConfig);
         initPidConfig(gyroID, &g1_smPidBqConfig);
+        initPidConfig(gyroID, &g1_smPidEcConfig);
+        initPidConfig(gyroID, &g1_smPidQcConfig);
         initQFactorConfig(gyroID, &g1_qFactor);
         initOpenloopConfig(gyroID, &g1_qfOpenloopConfig);
         initPidConfig(gyroID, &g1_qfPLLConfig);
@@ -214,6 +225,8 @@ void serviceInitX(u8 gyroID)
         initPidConfig(gyroID, &g2_smPidAqConfig);
         initPidConfig(gyroID, &g2_smPidBiConfig);
         initPidConfig(gyroID, &g2_smPidBqConfig);
+        initPidConfig(gyroID, &g2_smPidEcConfig);
+        initPidConfig(gyroID, &g2_smPidQcConfig);
         initQFactorConfig(gyroID, &g2_qFactor);
         initOpenloopConfig(gyroID, &g2_qfOpenloopConfig);
         initPidConfig(gyroID, &g2_qfPLLConfig);

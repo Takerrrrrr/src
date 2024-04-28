@@ -39,11 +39,20 @@ void initGyroData(u8 Gyro_ID, gyroDataRuntime_t *localData)
     localData->qFactorMax = 0;
     localData->agcAvg = 0;
     localData->debug = 0;
+    // whole angle mode parameters
+    localData->pidECCurrentError = 0;
+    localData->pidECCurrentOutput = 0;
+    localData->E = 0;
+    localData->pidQCCurrentError = 0;
+    localData->pidQCCurrentOutput = 0;
+    // localData->raw_angle = 0;
+    localData->Q = 0;
+    localData->angle = 0;
 }
 
 void readGyroData(u8 Gyro_ID)
 {
-    gyroDataRuntime_t localData = (Gyro_ID == GYRO1 ? gyroData_1 : gyroData_2);   // temporary data
+    gyroDataRuntime_t localData = (Gyro_ID == GYRO1 ? gyroData_1 : gyroData_2);
 
     localData.amp_cha_i = read_demod_IQ(Gyro_ID, CHA, COMPONENTI);
     localData.amp_cha_q = read_demod_IQ(Gyro_ID, CHA, COMPONENTQ);
@@ -53,13 +62,13 @@ void readGyroData(u8 Gyro_ID)
     localData.amp_chb = read_demod_amp(Gyro_ID, CHB);
     localData.phase_a = read_demod_phase(Gyro_ID, CHA);
     localData.phase_b = read_demod_phase(Gyro_ID, CHB);
-
+    //whole angle mode
+    // localData.angle = read_angle_scale(Gyro_ID);
     if (Gyro_ID == GYRO1)
         gyroData_1 = localData;
     else if (Gyro_ID == GYRO2)
         gyroData_2 = localData;
 }
-
 void setGyroData(u8 Gyro_ID, runtimeData_e field, u32 data)
 {
     gyroDataRuntime_t localData = (Gyro_ID == GYRO1 ? gyroData_1 : gyroData_2);
@@ -172,7 +181,42 @@ void setGyroData(u8 Gyro_ID, runtimeData_e field, u32 data)
         localData.debug = data;
         break;
     }
-
+    // whole angle mode
+    case RUNTIME_FIELD_PID_EC_CURRENT_ERROR:
+    {
+        localData.pidECCurrentError = data;
+        break;
+    }
+    case RUNTIME_FIELD_PID_EC_CURRENT_OUTPUT:
+    {
+        localData.pidECCurrentOutput = data;
+        break;
+    }
+    case RUNTIME_FIELD_WAM_E:
+    {
+        localData.E = data;
+        break;
+    }
+    case RUNTIME_FIELD_PID_QC_CURRENT_ERROR:
+    {
+        localData.pidQCCurrentError = data;
+        break;
+    }
+    case RUNTIME_FIELD_PID_QC_CURRENT_OUTPUT:
+    {
+        localData.pidQCCurrentOutput = data;
+        break;
+    }
+    case RUNTIME_FIELD_WAM_Q:
+    {
+        localData.Q = data;
+        break;
+    }
+    case RUNTIME_FIELD_WAM_ANGLE:
+    {
+        localData.angle = data;
+        break;
+    }
     default:
         break;
     }
@@ -336,6 +380,42 @@ u32 getGyroData(u8 Gyro_ID, runtimeData_e field)
     case RUNTIME_FIELD_PHASEFINDER_DEBUG:
     {
         value = localData.debug;
+        break;
+    }
+    // whole angle mode
+    case RUNTIME_FIELD_PID_EC_CURRENT_ERROR:
+    {
+        value = localData.pidECCurrentError;
+        break;
+    }
+    case RUNTIME_FIELD_PID_EC_CURRENT_OUTPUT:
+    {
+        value = localData.pidECCurrentOutput;
+        break;
+    }
+    case RUNTIME_FIELD_WAM_E:
+    {
+        value = localData.E;
+        break;
+    }
+    case RUNTIME_FIELD_PID_QC_CURRENT_ERROR:
+    {
+        value = localData.pidQCCurrentError;
+        break;
+    }
+    case RUNTIME_FIELD_PID_QC_CURRENT_OUTPUT:
+    {
+        value = localData.pidQCCurrentOutput;
+        break;
+    }
+    case RUNTIME_FIELD_WAM_Q:
+    {
+        value = localData.Q;
+        break;
+    }
+    case RUNTIME_FIELD_WAM_ANGLE:
+    {
+        value = localData.angle;
         break;
     }
 

@@ -45,6 +45,15 @@ typedef enum
     RUNTIME_FIELD_PHASEFINDER_AGCAVG = 81,
     RUNTIME_FIELD_PHASEFINDER_DEBUG = 82,
 
+    // whole angle mode field
+    RUNTIME_FIELD_PID_EC_CURRENT_ERROR = 91,
+    RUNTIME_FIELD_PID_EC_CURRENT_OUTPUT = 92,
+    RUNTIME_FIELD_WAM_E =  93,  
+    RUNTIME_FIELD_PID_QC_CURRENT_ERROR = 94,
+    RUNTIME_FIELD_PID_QC_CURRENT_OUTPUT = 95,
+    RUNTIME_FIELD_WAM_Q = 96,
+    RUNTIME_FIELD_WAM_ANGLE = 97,
+
 } runtimeData_e;
 
 // Gyro output
@@ -121,6 +130,17 @@ typedef struct
     // u32 resonantFrequency_a;
     // u32 resonantFrequency_b;
     // u32 currentHV;
+    // whole angle mode parameters
+    // EC PID data
+    s32 pidECCurrentError;
+    s32 pidECCurrentOutput;
+    // s32 raw_angle;      // 32 bit;need to transfer to scale angle
+    // s32 scale_angle;    // interval (-1,1)
+    s32 E;
+    s32 pidQCCurrentError;
+    s32 pidQCCurrentOutput;
+    s32 Q;
+    s32 angle      // standing wave angle interval (-180°,180°); *10000 to save precision
 } gyroDataRuntime_t;
 
 typedef struct
@@ -141,7 +161,7 @@ typedef struct
     u32 demodPhaseShiftB;
 } gyroOutput_t;
 
-// gyro runtime data instance 
+// gyro runtime data instance
 gyroDataRuntime_t gyroData_1;
 gyroDataRuntime_t gyroData_2;
 // gyro output (?) instance

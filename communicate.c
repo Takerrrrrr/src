@@ -21,11 +21,9 @@ void processFrequencyLock(u8 Gyro_ID, frequencyStateLock_e newState, u8 newState
 
     if (newStateValue != 0)
     {
-        // 把涉及到频率的操作的结构体全部失能
         tmpOpenloopConfig.frequency_enable = 0;
         tmpSweeperConfig.enable = 0;
         tmpPLLConfig.loopSource = 0;
-        // 根据命令判断使能的是哪个操作
         switch (newState)
         {
         case FRE_STATE_OP:
@@ -44,7 +42,6 @@ void processFrequencyLock(u8 Gyro_ID, frequencyStateLock_e newState, u8 newState
             break;
         }
         }
-        // 把每个结构体开关给到每个操作
         if (Gyro_ID == GYRO1)
         {
             g1_openloopConfig = tmpOpenloopConfig;
@@ -65,6 +62,7 @@ u32 g2_tlm_sel;
 dataPayload_t buildDataPayload(u8 Gyro_ID) // 发送数据帧结构
 {
     u32 tlm_selector = (Gyro_ID == GYRO1 ? g1_tlm_sel : g2_tlm_sel);
+    gyroOutput_t localGyroOutput = (Gyro_ID == GYRO1 ? gyroOutput_1 : gyroOutput_2);
     //    if (Gyro_ID == GYRO1)
     //    {
     //        tlm_selector = g1_tlm_sel;
@@ -113,15 +111,16 @@ dataPayload_t buildDataPayload(u8 Gyro_ID) // 发送数据帧结构
         localDataPayload.loopError = getGyroData(Gyro_ID, RUNTIME_FIELD_PLL_CURRENT_ERROR);
         localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_CURRENT_FREQUENCY);
         localDataPayload.loopReserved = getGyroData(Gyro_ID, RUNTIME_FIELD_PLL_CURRENT_PHASE);
-        localDataPayload.reserved1 = 0;
-        localDataPayload.reserved2 = 0;
+        localDataPayload.reserved1 = getGyroData(Gyro_ID, RUNTIME_FIELD_WAM_E);     // WAM_E transfer to upper computer
+        localDataPayload.reserved2 = getGyroData(Gyro_ID, RUNTIME_FIELD_WAM_ANGLE); // WAM_Angle transfer to upper computer
         localDataPayload.reserved3 = 0;
         break;
     }
     case MFIELDS_TYPE_PID_AI:
     {
         localDataPayload.loopError = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_AI_CURRENT_ERROR);
-        localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_AI_CURRENT_OUTPUT);
+        // localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_AI_CURRENT_OUTPUT);
+        localDataPayload.loopOutput = localGyroOutput.channelAI;
         localDataPayload.loopReserved = 0;
         localDataPayload.reserved1 = 0;
         localDataPayload.reserved2 = 0;
@@ -131,7 +130,8 @@ dataPayload_t buildDataPayload(u8 Gyro_ID) // 发送数据帧结构
     case MFIELDS_TYPE_PID_AQ:
     {
         localDataPayload.loopError = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_AQ_CURRENT_ERROR);
-        localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_AQ_CURRENT_OUTPUT);
+        // localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_AQ_CURRENT_OUTPUT);
+        localDataPayload.loopOutput = localGyroOutput.channelAI;
         localDataPayload.loopReserved = 0;
         localDataPayload.reserved1 = 0;
         localDataPayload.reserved2 = 0;
@@ -141,7 +141,8 @@ dataPayload_t buildDataPayload(u8 Gyro_ID) // 发送数据帧结构
     case MFIELDS_TYPE_PID_BI:
     {
         localDataPayload.loopError = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_BI_CURRENT_ERROR);
-        localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_BI_CURRENT_OUTPUT);
+        // localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_BI_CURRENT_OUTPUT);
+        localDataPayload.loopOutput = localGyroOutput.channelBI;
         localDataPayload.loopReserved = 0;
         localDataPayload.reserved1 = 0;
         localDataPayload.reserved2 = 0;
@@ -151,7 +152,8 @@ dataPayload_t buildDataPayload(u8 Gyro_ID) // 发送数据帧结构
     case MFIELDS_TYPE_PID_BQ:
     {
         localDataPayload.loopError = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_BQ_CURRENT_ERROR);
-        localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_BQ_CURRENT_OUTPUT);
+        // localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_BQ_CURRENT_OUTPUT);
+        localDataPayload.loopOutput = localGyroOutput.channelBQ;
         localDataPayload.loopReserved = 0;
         localDataPayload.reserved1 = 0;
         localDataPayload.reserved2 = 0;
@@ -187,6 +189,26 @@ dataPayload_t buildDataPayload(u8 Gyro_ID) // 发送数据帧结构
         localDataPayload.reserved1 = getGyroData(Gyro_ID, RUNTIME_FIELD_PHASEFINDER_AGCAVG);
         localDataPayload.reserved2 = getGyroData(Gyro_ID, RUNTIME_FIELD_PLL_CURRENT_SET_PHASE);
         localDataPayload.reserved3 = getGyroData(Gyro_ID, RUNTIME_FIELD_PHASEFINDER_DEBUG);
+        break;
+    }
+    case MFIELDS_TYPE_PID_EC:
+    {
+        localDataPayload.loopError = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_EC_CURRENT_ERROR);
+        localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_EC_CURRENT_OUTPUT);
+        localDataPayload.loopReserved = getGyroData(Gyro_ID, RUNTIME_FIELD_WAM_ANGLE);
+        localDataPayload.reserved1 = getGyroData(Gyro_ID, RUNTIME_FIELD_WAM_E);     // WAM_E transfer to upper computer;
+        localDataPayload.reserved2 = 0;
+        localDataPayload.reserved3 = 0;
+        break;
+    }
+    case MFIELDS_TYPE_PID_QC:
+    {
+        localDataPayload.loopError = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_QC_CURRENT_ERROR);
+        localDataPayload.loopOutput = getGyroData(Gyro_ID, RUNTIME_FIELD_PID_QC_CURRENT_OUTPUT);
+        localDataPayload.loopReserved = getGyroData(Gyro_ID, RUNTIME_FIELD_WAM_ANGLE);
+        localDataPayload.reserved1 = getGyroData(Gyro_ID, RUNTIME_FIELD_WAM_Q);     // WAM_Q transfer to upper computer;
+        localDataPayload.reserved2 = getGyroData(Gyro_ID, RUNTIME_FIELD_WAM_E);
+        localDataPayload.reserved3 = 0;
         break;
     }
     }
@@ -320,8 +342,8 @@ void decodeCmdPayload(cmdPayload_t cmd)
     case CMD_SM_PLL:
     {
         responseFlag = 1;
-        loopConfig_t tmp = (cmd.gyroID == 1 ? g1_smPLLConfig : g2_smPLLConfig);     // 把结构体赋值给tmp
-        tmp.loopSource = (u8)(cmd.data0 & 0x000000FF);                              // 依次修改结构体的值
+        loopConfig_t tmp = (cmd.gyroID == 1 ? g1_smPLLConfig : g2_smPLLConfig);
+        tmp.loopSource = (u8)(cmd.data0 & 0x000000FF);
         tmp.loop_setvalue = cmd.data1;
         tmp.loopReferenceValue = cmd.data2;
         tmp.PID_P = cmd.data3;
@@ -500,6 +522,50 @@ void decodeCmdPayload(cmdPayload_t cmd)
         else if (cmd.gyroID == GYRO2)
         {
             g2_modeSwitchingConfig = tmp;
+        }
+        break;
+    }
+    case CMD_WAM_PID_EC:
+    {
+        responseFlag = 1;
+        loopConfig_t tmp = (cmd.gyroID == 1 ? g1_smPidEcConfig : g2_smPidEcConfig);
+        tmp.loopSource = (u8)(cmd.data0 & 0x000000FF);
+        tmp.loopTarget = LOOP_PID_WAM_ENERGY;
+        tmp.loop_setvalue = cmd.data1;
+        tmp.loopReferenceValue = cmd.data2;
+        tmp.PID_P = cmd.data3;
+        tmp.PID_I = cmd.data4;
+        tmp.PID_D = cmd.data5;
+        tmp.outputLimit = cmd.data6;
+        if (cmd.gyroID == GYRO1)
+        {
+            g1_smPidEcConfig = tmp;
+        }
+        else if (cmd.gyroID == GYRO2)
+        {
+            g2_smPidEcConfig = tmp;
+        }
+        break;
+    }
+    case CMD_WAM_PID_QC:
+    {
+        responseFlag = 1;
+        loopConfig_t tmp = (cmd.gyroID == 1 ? g1_smPidQcConfig : g2_smPidQcConfig);
+        tmp.loopSource = (u8)(cmd.data0 & 0x000000FF);
+        tmp.loopTarget = LOOP_PID_WAM_QUADRATURE;
+        tmp.loop_setvalue = cmd.data1;
+        tmp.loopReferenceValue = cmd.data2;
+        tmp.PID_P = cmd.data3;
+        tmp.PID_I = cmd.data4;
+        tmp.PID_D = cmd.data5;
+        tmp.outputLimit = cmd.data6;
+        if (cmd.gyroID == GYRO1)
+        {
+            g1_smPidQcConfig = tmp;
+        }
+        else if (cmd.gyroID == GYRO2)
+        {
+            g2_smPidQcConfig = tmp;
         }
         break;
     }

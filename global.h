@@ -8,5 +8,6 @@
 #include "xil_types.h"
 #include "xparameters.h"
 #include "platform.h"
+#include "math.h"
 
 #endif /* SRC_GLOBAL_H_ */

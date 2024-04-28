@@ -242,20 +242,25 @@ int spi_init()
 #define G1_chb_amp_q_init 0x0000
 
 // G1  GPIO接口结构作用
-XGpio G1_freword;                    // axi_gpio0  	    G1频率字
-XGpio G1_amp_i_modulation;           // AXI_GPIO_8 	    G1同相驱动力调幅系数(sin)
-XGpio G1_amp_q_modulation;           // AXI_GPIO_9 	    G1正交驱动力调幅系数(cos)
+XGpio G1_freword;                    // axi_gpio0  	G1频率字
+XGpio G1_amp_i_modulation;           // AXI_GPIO_8 	   G1同相驱动力调幅系数(sin)
+XGpio G1_amp_q_modulation;           // AXI_GPIO_9 	G1正交驱动力调幅系数(cos)
 XGpio G1_cha_drive_phase_modulation; // AXI_GPIO_13 	G1 A通道驱动调相
 XGpio G1_chb_drive_phase_modulation; // AXI_GPIO_12 	G1 B通道驱动调相
-XGpio G1_cha_demod_phase_modulation; // AXI_GPIO_10  	G1 A通道解调调相
-XGpio G1_chb_demod_phase_modulation; // AXI_GPIO_11  	G1 B通道解调调相
+XGpio G1_cha_demod_phase_modulation; // AXI_GPIO_11  	G1 A通道解调调相
+XGpio G1_chb_demod_phase_modulation; // AXI_GPIO_10  	G1 B通道解调调相
 
 XGpio G1_cha_demod_IQ; // AXI_GPIO_4  G1 A通道解调后IQ值
 XGpio G1_chb_demod_IQ; // AXI_GPIO_5  G1 B通道解调后IQ值
-XGpio G1_demod_amp;    // AXI_GPIO_7	G1 解调幅值
-XGpio G1_demod_phase;  // AXI_GPIO_8	G1 解调相位
-XGpio G1_ADC_data;     // AXI_GPIO_16	G1 ADC输出数据（调试用）
-XGpio G1_NCO;          // AXI_GPIO_17	G1 NCO输出频率(调试用)
+XGpio G1_demod_amp;    // AXI_GPIO_6	G1 解调幅值
+XGpio G1_demod_phase;  // AXI_GPIO_7	G1 解调相位
+XGpio G1_ADC_data;     // AXI_GPIO_3	G1 ADC输出数据（调试用）
+XGpio G1_NCO;          // AXI_GPIO_2	G1 NCO输出频率(调试用)
+
+// XGpio for Whole Angle Mode; EC:energe control
+XGpio EC_RS;           // AXI_GPIO_14	S R 
+XGpio EC_Angel;        // AXI_GPIO_15	arctan(S/2R) 
+
 void axi_gpio_init(void)
 {
 	// Description: GPIO初始化
@@ -285,6 +290,7 @@ void axi_gpio_init(void)
     XGpio_Initialize(&G1_cha_drive_phase_modulation, XPAR_AXI_GPIO_13_DEVICE_ID);
     XGpio_SetDataDirection(&G1_cha_drive_phase_modulation, 1, 0x0000);
     XGpio_SetDataDirection(&G1_cha_drive_phase_modulation, 2, 0x0000);
+
     XGpio_DiscreteWrite(&G1_cha_drive_phase_modulation, 2, G1_cha_sin_drive_phase_init);
     XGpio_DiscreteWrite(&G1_cha_drive_phase_modulation, 1, G1_cha_cos_drive_phase_init);
 
@@ -292,6 +298,7 @@ void axi_gpio_init(void)
     XGpio_Initialize(&G1_chb_drive_phase_modulation, XPAR_AXI_GPIO_12_DEVICE_ID);
     XGpio_SetDataDirection(&G1_chb_drive_phase_modulation, 1, 0x0000);
     XGpio_SetDataDirection(&G1_chb_drive_phase_modulation, 2, 0x0000);
+
     XGpio_DiscreteWrite(&G1_chb_drive_phase_modulation, 2, G1_chb_sin_drive_phase_init);
     XGpio_DiscreteWrite(&G1_chb_drive_phase_modulation, 1, G1_chb_cos_drive_phase_init);
 
@@ -338,6 +345,17 @@ void axi_gpio_init(void)
     XGpio_Initialize(&G1_NCO, XPAR_AXI_GPIO_2_DEVICE_ID);
     XGpio_SetDataDirection(&G1_NCO, 1, 0xFFFF);
     XGpio_SetDataDirection(&G1_NCO, 2, 0xFFFF);
+
+    // axi_gpio14 EC_RS
+    XGpio_Initialize(&EC_RS, XPAR_AXI_GPIO_14_DEVICE_ID);
+    XGpio_SetDataDirection(&EC_RS, 1, 0x00000000);
+    XGpio_SetDataDirection(&EC_RS, 2, 0x00000000);
+    XGpio_DiscreteWrite(&EC_RS, 1, 0x0000);
+    XGpio_DiscreteWrite(&EC_RS, 2, 0x0000);
+    
+    // axi_gpio15 EC_Angel
+    XGpio_Initialize(&EC_Angel, XPAR_AXI_GPIO_15_DEVICE_ID);
+    XGpio_SetDataDirection(&EC_Angel, 1, 0xFFFFFFFF);
 }
 
 /*void write_gpio_debug(u8 value)
@@ -463,6 +481,24 @@ s32 G1_read_demod_phase(u8 channel)
     // return: s32 G1解调后的相位
     s32 temp = 0;
     temp = XGpio_DiscreteRead(&G1_demod_phase, channel);
+    return temp;
+}
+
+void write_whole_angle_parameter(u8 channel, s32 RS_value)
+{
+    // Description: 写入全角模式的计算量
+    // channel:  1通道写入R ，2通道为写入S
+    XGpio_DiscreteWrite(&EC_RS,channel,RS_value);
+    usleep(1);
+}
+
+s32 read_standing_wave_angle(void)
+{
+    // Description: 读取cordic计算的角度(需要除以2)
+    // cordic输出定点数格式： 1位符号位，2位整数位，29位小数位
+    // 输出范围： （-1，1）
+    s32 temp = 0;
+    temp = XGpio_DiscreteRead(&EC_Angel, 1);
     return temp;
 }
 

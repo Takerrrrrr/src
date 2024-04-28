@@ -27,6 +27,9 @@ typedef enum{
     LOOP_SOURCE_PHASE_B = 2,
     LOOP_SOURCE_AMP = 3,
     LOOP_SOURCE_COMPONENT = 4,
+    LOOP_SOURCE_WAM_EC_1 = 5, // whole angle mode energy control; downlink data flag
+    LOOP_SOURCE_WAM_EC_2 = 6, // whole angle mode energy control
+    LOOP_SOURCE_WAM_QC = 7, // whole angle mode quadrature control
 } loopSource_e;
 
 typedef enum
@@ -38,6 +41,8 @@ typedef enum
     LOOP_PID_BI = 0x04,
     LOOP_PID_BQ = 0x05,
     SWEEPER = 0x10,
+    LOOP_PID_WAM_ENERGY = 0x20,
+    LOOP_PID_WAM_QUADRATURE = 0X21,
 } loopIndex_e;
 
 typedef struct
@@ -45,7 +50,7 @@ typedef struct
     u8 gyroid;
     u8 loopSource; // PLL: mode A or B; Excite: amp or I/Q component. use loopSource_e
     u8 loopTarget; // AI AQ BI BQ, use loopIndex_e
-    s32 loop_setvalue;      // loop input
+    s32 loop_setvalue;
     s32 loopReferenceValue;
     s32 PID_P;
     s32 PID_I;
@@ -57,7 +62,6 @@ typedef struct
     s32 outputLimit;
     s32 currentReading; // for debug use case
 } loopConfig_t;
-// control loop universal structure
 
 // Config/parameters type for openloop mode
 typedef struct
@@ -101,7 +105,7 @@ typedef struct
     u8 gyroid;
     u8 enable;
     loopIndex_e targetLoop;   // AI AQ BI BQ
-    u32 scaleFactorFrequency; // for get the correct amp (and Q factor)
+    u32 scaleFactorFrequency; // for get the correct amp (and Q FACTOR)
     u32 startDelay;           // after x ticks, clap start
 
     u8 stage;
@@ -171,11 +175,15 @@ loopConfig_t g1_smPidAiConfig;
 loopConfig_t g1_smPidAqConfig;
 loopConfig_t g1_smPidBiConfig;
 loopConfig_t g1_smPidBqConfig;
+loopConfig_t g1_smPidEcConfig;
+loopConfig_t g1_smPidQcConfig;
 loopConfig_t g2_smPLLConfig;
 loopConfig_t g2_smPidAiConfig;
 loopConfig_t g2_smPidAqConfig;
 loopConfig_t g2_smPidBiConfig;
 loopConfig_t g2_smPidBqConfig;
+loopConfig_t g2_smPidEcConfig;
+loopConfig_t g2_smPidQcConfig;
 
 
 // copy1 state
@@ -221,7 +229,7 @@ loopConfig_t copy2_g2_smPidAqConfig;
 loopConfig_t copy2_g2_smPidBiConfig;
 loopConfig_t copy2_g2_smPidBqConfig;
 
-// q factor calculation config and buffer configs for configs of single mode
+// q FACTOR calculation config and buffer configs for configs of single mode
 qFactorConfig_t g1_qFactor;
 openloopConfig_t g1_qfOpenloopConfig;
 loopConfig_t g1_qfPLLConfig;
@@ -266,4 +274,27 @@ void calculateQFactor(qFactorConfig_t *localCfg);
 void resonantEstimator(resonantEstimatorConfig_t *localCfg);
 void phaseFinder(phaseFinderConfig_t *localCfg);
 void modeSwitching(modeSwitchingConfig_t *localCfg);
+#define PI 3.1415926
+#define FACTOR 2895.0                  // 电压标定值
+#define ANGLE_FACTOR (float)(1<<29)     // 放缩因子
+// typedef struct
+// {
+//     loopConfig_t *loopConfig;
+//     // whole angle mode parameter
+//     u8 Gyro_ID;
+//     s32 S;     
+//     s32 R;
+//     s32 E;
+//     s32 L;
+//     s32 raw_angle;      // 32 bit;need to transfer to scale angle
+//     s32 scale_angle;    // interval (-1,1)
+//     double angle;       // interval (-180°,180°)
+//     double angle_sin;
+//     double angle_cos;
+// } wholeAngleConfig_t;
+void wamEQcalculation(u8 gyroid);
+void wamSRoperation(u8 gyroid);
+void wamDriveOperation(loopConfig_t* localCfg);
+void wamAngleCalucation(u8 gyroid);
+void wamPhaseCompensation(u8 gyroid);
 #endif /* SRC_GYRO_H_ */

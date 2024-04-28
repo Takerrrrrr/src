@@ -4,6 +4,9 @@
 
 #include "peripheral.h"
 
+#define CHS 2
+#define CHR 1
+
 typedef struct
 {
     u8 gyroID;
@@ -17,7 +20,6 @@ typedef struct
     u32 data6;
     u32 data7;
 } cmdPayload_t;
-// pc to ps (after decode)
 
 typedef struct{
     u8 gyroID;
@@ -36,18 +38,15 @@ typedef struct{
     s32 reserved3;
     u8 type;
 }dataPayload_t;
-// ps to pc(before transform to array)
 
 u32 getSystemTime(void);
 
-// communication operations
 void sendData(dataPayload_t payload);
 void sendCmdResponse(cmdPayload_t payload, u8 direction);
 cmdPayload_t recvCmd();
 u8 isCmdValid(void);
 void resetCmdValidStatus(void);
 
-// gyro operation
 void write_freword(u8 Gyro_ID,u32 freword);										//写入陀螺ID的频率字的值
 void write_amp_i_modulation(u8 Gyro_ID,u8 channel,short amp_i_modulation);		//写入陀螺ID，同相驱动力调幅系数的值
 void write_amp_q_modulation(u8 Gyro_ID,u8 channel,short amp_q_modulation);	    //写入陀螺ID，正交驱动力调幅系数的值
@@ -58,4 +57,7 @@ s32 read_demod_IQ(u8 Gyro_ID,u8 channel, u32 Gyro_IQ); 							//陀螺ID号和�
 u32 read_demod_amp(u8 Gyro_ID,u8 channel );								        //陀螺ID号和通道号下解调后的幅值
 s32 read_demod_phase(u8 Gyro_ID,u8 channel);							        //陀螺ID号和通道号下解调后的相位
 
+// function for whole angle mode
+void write_SR(u8 Gyro_ID,s32 r_value, s32 s_value);
+s32 read_angle_scale(u8 Gyro_ID);
 #endif /* SRC_BEHAVIOR_H_ */
